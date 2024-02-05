@@ -1,0 +1,204 @@
+-- --------------------------------------------------------
+-- Host:                         127.0.0.1
+-- Server version:               11.1.2-MariaDB - mariadb.org binary distribution
+-- Server OS:                    Win64
+-- HeidiSQL Version:             12.3.0.6589
+-- --------------------------------------------------------
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+
+-- Dumping database structure for sportsclub
+CREATE DATABASE IF NOT EXISTS `sportsclub` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;
+USE `sportsclub`;
+
+-- Dumping structure for table sportsclub.area
+CREATE TABLE IF NOT EXISTS `area` (
+  `area` varchar(50) NOT NULL,
+  `description` varchar(100) DEFAULT NULL,
+  `trainerName` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`area`),
+  KEY `FK_area_trainer` (`trainerName`) USING BTREE,
+  CONSTRAINT `FK_area_trainer` FOREIGN KEY (`trainerName`) REFERENCES `trainer` (`trainerName`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.course
+CREATE TABLE IF NOT EXISTS `course` (
+  `courseID` int(11) NOT NULL,
+  `courseName` varchar(50) NOT NULL,
+  `targetGroup` char(3) NOT NULL DEFAULT '',
+  `area` varchar(50) NOT NULL,
+  `trainerName` varchar(50) NOT NULL,
+  PRIMARY KEY (`courseID`),
+  KEY `FK_course_trainer` (`trainerName`),
+  KEY `FK_course_area` (`area`),
+  KEY `FK_course_lookup_targetgroup` (`targetGroup`),
+  CONSTRAINT `FK_course_lookup_targetgroup` FOREIGN KEY (`targetGroup`) REFERENCES `lookup_targetgroup` (`targetGroup`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.device
+CREATE TABLE IF NOT EXISTS `device` (
+  `deviceID` int(5) NOT NULL,
+  `devName` varchar(50) NOT NULL DEFAULT '',
+  PRIMARY KEY (`deviceID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.enrollment
+CREATE TABLE IF NOT EXISTS `enrollment` (
+  `memName` varchar(50) NOT NULL,
+  `courseID` int(5) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`courseID`,`memName`),
+  KEY `FK_enrollment_course` (`memName`) USING BTREE,
+  CONSTRAINT `FK_enrollment_course` FOREIGN KEY (`courseID`) REFERENCES `course` (`courseID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK_enrollment_member` FOREIGN KEY (`memName`) REFERENCES `member` (`memName`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.enrollment_test
+CREATE TABLE IF NOT EXISTS `enrollment_test` (
+  `memName` varchar(50) NOT NULL,
+  `courseID` int(11) NOT NULL,
+  PRIMARY KEY (`courseID`,`memName`),
+  KEY `FK_enrollment_test_member` (`memName`),
+  CONSTRAINT `FK_enrollment_test_course` FOREIGN KEY (`courseID`) REFERENCES `course` (`courseID`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  CONSTRAINT `FK_enrollment_test_member` FOREIGN KEY (`memName`) REFERENCES `member` (`memName`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.lookup_targetgroup
+CREATE TABLE IF NOT EXISTS `lookup_targetgroup` (
+  `targetGroup` char(3) NOT NULL,
+  `description` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`targetGroup`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.member
+CREATE TABLE IF NOT EXISTS `member` (
+  `memName` varchar(50) NOT NULL,
+  `isTrainer` tinyint(3) unsigned NOT NULL DEFAULT 0,
+  `DoB` date NOT NULL,
+  `gender` enum('f','m','d') NOT NULL,
+  `eMail` varchar(80) NOT NULL,
+  `postalCode` int(4) unsigned zerofill NOT NULL,
+  `entryDate` date DEFAULT NULL,
+  `parentName` varchar(50) DEFAULT NULL,
+  `age` int(3) GENERATED ALWAYS AS (timestampdiff(YEAR,`DoB`,current_timestamp())) VIRTUAL,
+  PRIMARY KEY (`memName`),
+  KEY `FK_member_member` (`parentName`),
+  CONSTRAINT `FK_member_member` FOREIGN KEY (`parentName`) REFERENCES `member` (`memName`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `CHK_isTrainer` CHECK ('isTrainer' = 0 or 'isTrainer' = 1),
+  CONSTRAINT `CHK_isParent` CHECK ('memName' <> 'parentName'),
+  CONSTRAINT `CHK_entryDate` CHECK (`entryDate` >= '2015-01-01')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.memfee
+CREATE TABLE IF NOT EXISTS `memfee` (
+  `pType` char(3) NOT NULL,
+  `price` decimal(6,2) unsigned NOT NULL,
+  `description` varchar(80) DEFAULT NULL,
+  PRIMARY KEY (`pType`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci WITH SYSTEM VERSIONING
+ PARTITION BY SYSTEM_TIME 
+(PARTITION `p_hist` HISTORY ENGINE = InnoDB,
+ PARTITION `p_cur` CURRENT ENGINE = InnoDB);
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table sportsclub.reservation
+CREATE TABLE IF NOT EXISTS `reservation` (
+  `timeslot` date NOT NULL,
+  `memName` varchar(50) NOT NULL DEFAULT '',
+  `deviceID` int(11) NOT NULL,
+  PRIMARY KEY (`memName`,`timeslot`) USING BTREE,
+  UNIQUE KEY `newConstr` (`deviceID`,`timeslot`),
+  CONSTRAINT `FK_reservation_device` FOREIGN KEY (`deviceID`) REFERENCES `device` (`deviceID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK_reservation_member` FOREIGN KEY (`memName`) REFERENCES `member` (`memName`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for view sportsclub.targetgroupview
+-- Creating temporary table to overcome VIEW dependency errors
+CREATE TABLE `targetgroupview` (
+	`targetGroup` CHAR(3) NOT NULL COLLATE 'utf8mb4_general_ci',
+	`numberOfCourses` BIGINT(21) NOT NULL,
+	`percentageOfTotalCourses` DECIMAL(27,4) NULL
+) ENGINE=MyISAM;
+
+-- Dumping structure for table sportsclub.trainer
+CREATE TABLE IF NOT EXISTS `trainer` (
+  `trainerName` varchar(50) NOT NULL,
+  `license` tinyint(1) unsigned NOT NULL DEFAULT 0,
+  `startDate` date DEFAULT NULL,
+  PRIMARY KEY (`trainerName`),
+  CONSTRAINT `FK_trainer_member` FOREIGN KEY (`trainerName`) REFERENCES `member` (`memName`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Data exporting was unselected.
+
+-- Dumping structure for view sportsclub.trainerview
+-- Creating temporary table to overcome VIEW dependency errors
+CREATE TABLE `trainerview` (
+	`trainerName` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_general_ci',
+	`trainerDoB` DATE NOT NULL,
+	`trainerAge` INT(3) NULL,
+	`trainerGender` ENUM('f','m','d') NOT NULL COLLATE 'utf8mb4_general_ci',
+	`trainerEmail` VARCHAR(80) NOT NULL COLLATE 'utf8mb4_general_ci',
+	`trainerEntryDate` DATE NULL,
+	`license` TINYINT(1) UNSIGNED NOT NULL,
+	`startTeachDate` DATE NULL
+) ENGINE=MyISAM;
+
+-- Dumping structure for view sportsclub.targetgroupview
+-- Removing temporary table and create final VIEW structure
+DROP TABLE IF EXISTS `targetgroupview`;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `targetgroupview` AS SELECT
+    c.targetGroup,
+    COUNT(c.courseID) AS numberOfCourses,
+    (COUNT(c.courseID)*100/(SELECT COUNT(*)FROM course)) AS percentageOfTotalCourses
+FROM
+    course c
+GROUP BY
+    c.targetGroup ;
+
+-- Dumping structure for view sportsclub.trainerview
+-- Removing temporary table and create final VIEW structure
+DROP TABLE IF EXISTS `trainerview`;
+CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `trainerview` AS SELECT
+    t.trainerName,
+    m.DoB AS trainerDoB,
+    m.age AS trainerAge,
+    m.gender AS trainerGender,
+    m.eMail AS trainerEmail,
+    m.entryDate AS trainerEntryDate,
+    t.license,
+    t.startDate AS startTeachDate
+FROM
+    trainer t
+JOIN
+    member m ON t.trainerName = m.memName ;
+
+/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;
